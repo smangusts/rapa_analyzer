@@ -358,7 +358,8 @@ def main():
         # Metrics
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Заявок", len(df))
-        m2.metric("Участников", df['ФИО Участника'].nunique())
+        unique_participants = (df['ФИО Участника'] + df['Дата рождения'].astype(str)).nunique()
+        m2.metric("Участников", unique_participants)
         m3.metric("Школ", df['Школа'].nunique())
         m4.metric("Городов", df['Город'].nunique())
 
