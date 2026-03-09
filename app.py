@@ -58,90 +58,120 @@ def calculate_age(birthdate_str):
 @st.cache_data
 def process_excel(file_bytes):
     """
-    Парсит загруженный excel-файл.
+    Парсит загруженный excel-файл. Поддерживает как старый формат выгрузки, так и новый формат из Chrome Extension.
     """
-    wb = load_workbook(io.BytesIO(file_bytes), data_only=True)
-    ws = wb.active
-    rows = list(ws.iter_rows(min_row=2, max_col=4, values_only=True))
-    
-    people = []
-    current_person: dict = {}
-    
-    for row in rows:
-        participant, disc, comp, desc = row
+    try:
+        wb = load_workbook(io.BytesIO(file_bytes), data_only=True)
+        ws = wb.active
         
-        is_new_person = False
-        p_str = str(participant).strip() if participant else ''
-        if p_str and p_str.lower() != 'nan':
-            if any(c.isalpha() for c in p_str) and not p_str.startswith('жен.,') and not p_str.startswith('муж.,') and 'лет ' not in p_str.lower() and not p_str.lower().startswith('дуэты'):
-                is_new_person = True
-    
-        if is_new_person:
-            if current_person and current_person.get('_participants'):
-                # Determine perfType for the previous person/group
-                p_participants = current_person.get('_participants', [])
-                p_count = len(p_participants)
-                perf_type = 'Соло' if p_count == 1 else ('Дуэт' if p_count == 2 else 'Группа')
-                for p_sub in p_participants:
-                    if isinstance(p_sub, dict):
-                        people.append({**p_sub, 'Тип номера': perf_type})
+        # Проверяем на новый формат (Заголовки на 4-й строке)
+        row4_values = [str(cell.value).strip() if cell.value else "" for cell in ws[4]]
+        
+        if "ФИО" in row4_values and "Дисциплина" in row4_values:
+            # Новый формат
+            df = pd.read_excel(io.BytesIO(file_bytes), skiprows=3)
+            df = df.rename(columns={
+                'ФИО': 'ФИО Участника',
+                'Полных лет': 'Возраст'
+            })
             
-            current_person = {
-                '_participants': [],
-                'Дисциплина': str(disc) if disc else '',
-                'Категория': str(comp) if comp else '',
-                'Ранг': 'Без разряда', # Excel doesn't always have it clear
-                'Город': 'Не указан',
-                'Школа': 'Не указана',
-                'Тренер': 'Не указан'
-            }
-    
-        if current_person:
-            if participant and not is_new_person:
-                if 'жен.,' in str(participant) or 'муж.,' in str(participant):
-                    parts = str(participant).split(',')
-                    age_str = [pt for pt in parts if 'лет' in pt]
-                    dob = age_str[0].strip() if age_str else str(participant)
-                    
-                    # Logic for Excel is slightly different, but let's try to capture info
-                    current_person['_participants'].append({
-                        'ФИО Участника': p_str if p_str else 'Участник',
-                        'Дата рождения': dob,
-                        'Возраст': None, # hard to calc from "10 лет" string accurately
-                        'Дисциплина': current_person['Дисциплина'],
-                        'Категория': current_person['Категория'],
-                        'Ранг': current_person['Ранг'],
-                        'Город': current_person['Город'],
-                        'Школа': current_person['Школа'],
-                        'Тренер': current_person['Тренер']
-                    })
+            comp_name = ws['A1'].value if ws['A1'].value else "Загружено из Excel"
+            comp_dates = ws['A2'].value if ws['A2'].value else ""
             
-            if desc:
-                desc_str = str(desc).strip()
-                if desc_str.startswith('Город:'):
-                    current_person['Город'] = desc_str.replace('Город:', '').strip()
-                elif desc_str.startswith('Школа'):
-                    current_person['Школа'] = desc_str.split(':', 1)[-1].strip()
-                elif desc_str.startswith('ФИО тренера:'):
-                    current_person['Тренер'] = desc_str.replace('ФИО тренера:', '').strip()
+            if 'Школа' in df.columns:
+                df['Школа'] = df['Школа'].apply(normalize_school)
                 
-                # Update added participants
-                for p_sub in current_person['_participants']:
-                    p_sub['Город'] = current_person['Город']
-                    p_sub['Школа'] = current_person['Школа']
-                    p_sub['Тренер'] = current_person['Тренер']
-
-    if current_person:
-        participants_list = current_person.get('_participants', [])
-        p_count = len(participants_list)
-        perf_type = 'Соло' if p_count == 1 else ('Дуэт' if p_count == 2 else 'Группа')
-        for p_sub in participants_list:
-            people.append({**p_sub, 'Тип номера': perf_type})
+            return df, str(comp_name), str(comp_dates)
+            
+        else:
+            # Старый логика
+            rows = list(ws.iter_rows(min_row=2, max_col=4, values_only=True))
+            
+            people = []
+            current_person: dict = {}
+            
+            for row in rows:
+                if len(row) < 4:
+                    # Pad to 4 if needed
+                    row = list(row) + [None] * (4 - len(row))
+                participant, disc, comp, desc = row[:4]
+                
+                is_new_person = False
+                p_str = str(participant).strip() if participant else ''
+                if p_str and p_str.lower() != 'nan':
+                    if any(c.isalpha() for c in p_str) and not p_str.startswith('жен.,') and not p_str.startswith('муж.,') and 'лет ' not in p_str.lower() and not p_str.lower().startswith('дуэты'):
+                        is_new_person = True
+            
+                if is_new_person:
+                    if current_person and current_person.get('_participants'):
+                        # Determine perfType for the previous person/group
+                        p_participants = current_person.get('_participants', [])
+                        p_count = len(p_participants)
+                        perf_type = 'Соло' if p_count == 1 else ('Дуэт' if p_count == 2 else 'Группа')
+                        for p_sub in p_participants:
+                            if isinstance(p_sub, dict):
+                                people.append({**p_sub, 'Тип номера': perf_type})
+                    
+                    current_person = {
+                        '_participants': [],
+                        'Дисциплина': str(disc) if disc else '',
+                        'Категория': str(comp) if comp else '',
+                        'Ранг': 'Без разряда', # Excel doesn't always have it clear
+                        'Город': 'Не указан',
+                        'Школа': 'Не указана',
+                        'Тренер': 'Не указан'
+                    }
+            
+                if current_person:
+                    if participant and not is_new_person:
+                        if 'жен.,' in str(participant) or 'муж.,' in str(participant):
+                            parts = str(participant).split(',')
+                            age_str = [pt for pt in parts if 'лет' in pt]
+                            dob = age_str[0].strip() if age_str else str(participant)
+                            
+                            # Logic for Excel is slightly different, but let's try to capture info
+                            current_person['_participants'].append({
+                                'ФИО Участника': p_str if p_str else 'Участник',
+                                'Дата рождения': dob,
+                                'Возраст': None, # hard to calc from "10 лет" string accurately
+                                'Дисциплина': current_person['Дисциплина'],
+                                'Категория': current_person['Категория'],
+                                'Ранг': current_person['Ранг'],
+                                'Город': current_person['Город'],
+                                'Школа': current_person['Школа'],
+                                'Тренер': current_person['Тренер']
+                            })
+                    
+                    if desc:
+                        desc_str = str(desc).strip()
+                        if desc_str.startswith('Город:'):
+                            current_person['Город'] = desc_str.replace('Город:', '').strip()
+                        elif desc_str.startswith('Школа'):
+                            current_person['Школа'] = desc_str.split(':', 1)[-1].strip()
+                        elif desc_str.startswith('ФИО тренера:'):
+                            current_person['Тренер'] = desc_str.replace('ФИО тренера:', '').strip()
+                        
+                        # Update added participants
+                        for p_sub in current_person['_participants']:
+                            p_sub['Город'] = current_person['Город']
+                            p_sub['Школа'] = current_person['Школа']
+                            p_sub['Тренер'] = current_person['Тренер']
         
-    for p in people:
-        p['Школа'] = normalize_school(p.get('Школа', 'Не указана'))
-        
-    return pd.DataFrame(people), "Загружено из Excel", ""
+            if current_person:
+                participants_list = current_person.get('_participants', [])
+                p_count = len(participants_list)
+                perf_type = 'Соло' if p_count == 1 else ('Дуэт' if p_count == 2 else 'Группа')
+                for p_sub in participants_list:
+                    people.append({**p_sub, 'Тип номера': perf_type})
+                
+            for p in people:
+                p['Школа'] = normalize_school(p.get('Школа', 'Не указана'))
+                
+            return pd.DataFrame(people), "Загружено из Excel (Старый формат)", ""
+            
+    except Exception as e:
+        print(f"Error processing Excel: {e}")
+        return pd.DataFrame(), "Ошибка чтения Excel", ""
 
 @st.cache_data
 def process_url(url):
@@ -288,7 +318,8 @@ def main():
             for field, val in current_filters.items():
                 if val and field != target_field:
                     temp_df = temp_df[temp_df[field] == val]
-            return sorted(temp_df[target_field].unique().tolist())
+            options = [x for x in temp_df[target_field].unique() if pd.notna(x)]
+            return sorted(options, key=str)
 
         # State for filters
         if 'filters' not in st.session_state:
