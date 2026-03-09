@@ -32,6 +32,9 @@ if [ ! -f "$APP_PATH" ]; then
 fi
 
 # Запускаем Streamlit
+echo "Проверка зависимостей..."
+pip install -r "$SCRIPT_DIR/requirements.txt" --quiet
+
 echo "Открываем веб-интерфейс (Streamlit)..."
 streamlit run "$APP_PATH"
 
