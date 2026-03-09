@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>RAPA Анализатор</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      width: 700px;
+      padding: 15px;
+      margin: 0;
+      background: #f8f9fa;
+      color: #333;
+    }
+    h2 {
+      margin-top: 0;
+      color: #1a73e8;
+      font-size: 18px;
+    }
+    .panel {
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 15px;
+    }
+    p.info {
+      font-size: 13px;
+      color: #555;
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+    button {
+      background: #1a73e8;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    button:hover { background: #1557b0; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    
+    .filters {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .filters input, .filters select {
+      padding: 6px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    
+    .metrics {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .metrics span { color: #1a73e8; font-size: 14px; font-weight: bold; }
+    
+    .table-container {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: white;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th {
+      background: #f1f3f4;
+      padding: 8px;
+      text-align: left;
+      position: sticky;
+      top: 0;
+      border-bottom: 1px solid #ddd;
+    }
+    td {
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+    }
+    #error { color: #d93025; font-size: 13px; font-weight: 500; margin-top: 10px; }
+    #loader { display: none; margin-left: 10px; font-size: 13px; color: #555;}
+  </style>
+</head>
+<body>
+
+  <div class="panel">
+    <h2>🎪 Анализ текущего соревнования RAPA</h2>
+    <p class="info">Откройте страницу соревнования на сайте referee.f-rapa.ru, затем нажмите кнопку ниже, чтобы собрать всех участников.</p>
+    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <button id="fetchBtn" style="flex: 1;">Загрузить онлайн</button>
+        <button id="importBtn" style="background: #34a853; flex: 1;">📁 Из Excel</button>
+        <input type="file" id="importExcel" accept=".xlsx" style="display: none;">
+      </div>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <button id="exportGSBtn" style="background: #4285f4; flex: 1;">📊 В Google Таблицы</button>
+        <button id="importGSBtn" style="background: #fbbc05; color: #333; flex: 1;">📥 Из Google Таблиц</button>
+      </div>
+    </div>
+    <span id="loader">⏳ Загрузка таблиц...</span>
+    <div id="error"></div>
+  </div>
+
+  <script src="xlsx.full.min.js"></script>
+
+  <div class="panel" id="resultsPanel" style="display: none;">
+    <div class="filters">
+       <input type="text" id="filterName" placeholder="Поиск по ФИО">
+       <input type="text" id="filterDiscip" placeholder="Дисциплина (кольцо, полотна)">
+       <select id="filterCity"><option value="">Все города</option></select>
+       <select id="filterSchool"><option value="">Все школы</option></select>
+    </div>
+    
+    <div class="metrics">
+       <div>Найдено: <span id="countTotal">0</span></div>
+       <div>Школ: <span id="countSchools">0</span></div>
+       <div>Городов: <span id="countCities">0</span></div>
+    </div>
+    
+    <div class="table-container">
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th>Участник</th>
+            <th>Возраст/ПОЛ</th>
+            <th>Дисциплина</th>
+            <th>Категория</th>
+            <th>Школа</th>
+            <th>Город</th>
+            <th>Тренер</th>
+          </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

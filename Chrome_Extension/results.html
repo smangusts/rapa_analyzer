@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAPA - Аналитический Дашборд</title>
+    <link rel="stylesheet" href="results.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar for Filters -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">🎪</span>
+                    <span class="logo-text">RAPA<span>Analyzer</span></span>
+                </div>
+            </div>
+            
+            <div class="sidebar-content">
+                <div class="filter-group">
+                    <label for="filterName">Поиск участника</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="filterName" placeholder="ФИО...">
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label for="filterDiscip">Дисциплина</label>
+                    <select id="filterDiscip">
+                        <option value="">Все дисциплины</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="filterCategory">Категория</label>
+                    <select id="filterCategory">
+                        <option value="">Все категории</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="filterRank">Ранг / Возраст</label>
+                    <select id="filterRank" disabled>
+                        <option value="">Сначала выберите категорию</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="filterCity">Город</label>
+                    <select id="filterCity">
+                        <option value="">Все города</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="filterSchool">Школа / Клуб</label>
+                    <select id="filterSchool">
+                        <option value="">Все школы</option>
+                    </select>
+                </div>
+                
+                <button id="resetFilters" class="btn-secondary">Сбросить все фильтры</button>
+            </div>
+            
+            <div class="sidebar-footer">
+                <p>Версия 1.0 • RAPA Analyzer</p>
+            </div>
+        </aside>
+
+        <!-- Main Content area -->
+        <main class="main-content">
+            <header class="comp-header">
+                <h1 id="compName">Загрузка...</h1>
+                <p id="compDates" class="comp-dates"></p>
+            </header>
+
+            <header class="top-bar">
+                <h1 id="pageTitle">Аналитическая панель</h1>
+                <div class="top-bar-actions">
+                    <button id="exportExcel" class="btn-primary">
+                        <span>📊</span> Экспорт в Excel
+                    </button>
+                </div>
+            </header>
+
+            <!-- Metrics Grid -->
+            <section class="metrics-grid">
+                <div class="metric-card" onclick="document.getElementById('applications-section').scrollIntoView({behavior: 'smooth'})" style="cursor: pointer;">
+                    <div class="metric-icon">📑</div>
+                    <div class="metric-data">
+                        <span class="metric-label">Всего номеров</span>
+                        <span class="metric-value" id="countTotal">0</span>
+                    </div>
+                </div>
+                <div class="metric-card" onclick="document.getElementById('applications-section').scrollIntoView({behavior: 'smooth'})" style="cursor: pointer;">
+                    <div class="metric-icon">👤</div>
+                    <div class="metric-data">
+                        <span class="metric-label">Участников</span>
+                        <span class="metric-value" id="countUnique">0</span>
+                    </div>
+                </div>
+                <div class="metric-card" onclick="document.getElementById('stats-section').scrollIntoView({behavior: 'smooth'})" style="cursor: pointer;">
+                    <div class="metric-icon">🏫</div>
+                    <div class="metric-data">
+                        <span class="metric-label">Школ</span>
+                        <span class="metric-value" id="countSchools">0</span>
+                    </div>
+                </div>
+                <div class="metric-card" onclick="document.getElementById('stats-section').scrollIntoView({behavior: 'smooth'})" style="cursor: pointer;">
+                    <div class="metric-icon">📍</div>
+                    <div class="metric-data">
+                        <span class="metric-label">Городов</span>
+                        <span class="metric-value" id="countCities">0</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Data Table Section -->
+            <section id="applications-section" class="data-section">
+                <div class="table-card">
+                    <div class="table-header">
+                        <h3>Список заявок</h3>
+                        <span id="resultsCount">Показано: 0</span>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>ФИО Участника</th>
+                                    <th>Дата рождения</th>
+                                    <th>Лет</th>
+                                    <th>Дисциплина</th>
+               <th>Категория</th>
+                                    <th>Ранг / Возраст</th>
+                                    <th style="text-align: center;">Тип</th>
+                                    <th>Спортивная школа</th>
+                                    <th>Город</th>
+                                    <th>Тренер</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Data will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Performance Stats Section -->
+            <section id="performance-stats-section" class="data-section" style="margin-top: 32px;">
+                <div class="table-card">
+                    <div class="table-header">
+                        <h3>Статистика по номерам</h3>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="performanceStatsTable">
+                            <thead>
+                                <tr>
+                                    <th>Город / Школа</th>
+                                    <th style="text-align: center;">Соло</th>
+                                    <th style="text-align: center;">Дуэты</th>
+                                    <th style="text-align: center;">Группы</th>
+                                    <th style="text-align: center;">Всего</th>
+                                </tr>
+                            </thead>
+                            <tbody id="performanceStatsBody">
+                                <!-- Performance stats will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- School Stats Section -->
+            <section id="school-stats-section" class="data-section" style="margin-top: 32px;">
+                <div class="table-card">
+                    <div class="table-header">
+                        <h3>Статистика по школам</h3>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="statsTable">
+                            <thead>
+                                <tr>
+                                    <th>Школа / Клуб</th>
+                                    <th>Город</th>
+                                    <th style="text-align: center;">Участников</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Stats will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Notification system -->
+    <div id="notification" class="notification"></div>
+
+    <script src="xlsx.full.min.js"></script>
+    <script src="results.js"></script>
+</body>
+</html>

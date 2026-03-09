@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "RAPA - Анализ Соревнований",
+  "version": "1.0",
+  "description": "Парсит участников со страницы соревнований https://referee.f-rapa.ru/ и отображает с фильтрами.",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "unlimitedStorage",
+    "identity"
+  ],
+  "host_permissions": [
+    "https://*.f-rapa.ru/*",
+    "http://*.f-rapa.ru/*"
+  ],
+  "oauth2": {
+    "client_id": "YOUR_CLIENT_ID_HERE.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/drive.file"
+    ]
+  }
+}
