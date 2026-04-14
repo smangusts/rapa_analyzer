@@ -45,6 +45,17 @@ document.getElementById('fetchBtn').addEventListener('click', async () => {
     const compId = match[1];
     let page = 1;
     const take = 50;
+    
+    // Загружаем сохраненные алиасы школ
+    let schoolAliases = {};
+    try {
+        const stored = await chrome.storage.local.get(['schoolAliases']);
+        if (stored.schoolAliases) {
+            schoolAliases = stored.schoolAliases;
+        }
+    } catch (e) {
+        console.warn('Не удалось загрузить алиасы школ:', e);
+    }
 
     // Получаем метаданные соревнования (название и даты)
     let compName = 'Соревнование RAPA';
@@ -79,7 +90,19 @@ document.getElementById('fetchBtn').addEventListener('click', async () => {
       
       for (const item of items) {
         const cityName = (item.city && item.city.name) ? item.city.name : 'Не указан';
-        const school = normalizeSchool(item.trainer_place);
+        
+        // Надежное извлечение и нормализация школы
+        const rawSchool = item.trainer_place || '';
+        const trimmedSchool = rawSchool.trim();
+        const lowerSchoolKey = trimmedSchool.toLowerCase();
+        
+        let school = trimmedSchool;
+        if (schoolAliases[lowerSchoolKey]) {
+            school = schoolAliases[lowerSchoolKey]; // Применяем ручной маппинг пользователя
+        } else {
+            school = normalizeSchool(rawSchool); // Применяем базовую эвристику
+        }
+        
         const trainer = item.trainer_fullname || 'Не указан';
         
         // Более гибкое извлечение (Defensive extraction)

@@ -82,6 +82,13 @@ function setupEventListeners() {
     });
 
     document.getElementById('exportExcel').addEventListener('click', exportToExcel);
+    
+    // Управление школами (School Merger)
+    document.getElementById('manageSchoolsBtn').addEventListener('click', openMergerModal);
+    document.getElementById('closeMergerModal').addEventListener('click', closeMergerModal);
+    document.getElementById('cancelMergerBtn').addEventListener('click', closeMergerModal);
+    document.getElementById('targetSchoolSelect').addEventListener('change', handleTargetSchoolChange);
+    document.getElementById('confirmMergerBtn').addEventListener('click', executeMerge);
 }
 
 function populateFilters() {
@@ -406,4 +413,115 @@ function showNotification(message, isError = false) {
     setTimeout(() => {
         el.classList.remove('show');
     }, 3000);
+}
+
+// --- Логика объединения школ (School Merger) ---
+
+function openMergerModal() {
+    const modal = document.getElementById('schoolMergerModal');
+    const targetSelect = document.getElementById('targetSchoolSelect');
+    const aliasList = document.getElementById('aliasSchoolsList');
+    
+    // Получаем список всех уникальных школ из текущих данных
+    const uniqueSchools = [...new Set(allData.map(item => item.school))].filter(Boolean).sort();
+    
+    // Наполняем dropdown главной школы
+    targetSelect.innerHTML = '<option value="">-- Выберите главную школу --</option>';
+    uniqueSchools.forEach(school => {
+        const opt = document.createElement('option');
+        opt.value = school;
+        opt.textContent = school;
+        targetSelect.appendChild(opt);
+    });
+    
+    // Очищаем список галочек и блокируем кнопку
+    aliasList.innerHTML = '<p style="color: #5f6368; font-size: 13px; font-style: italic;">Сначала выберите главную школу сверху.</p>';
+    document.getElementById('confirmMergerBtn').disabled = true;
+    
+    modal.classList.add('show');
+}
+
+function closeMergerModal() {
+    document.getElementById('schoolMergerModal').classList.remove('show');
+}
+
+function handleTargetSchoolChange(e) {
+    const targetSchool = e.target.value;
+    const aliasList = document.getElementById('aliasSchoolsList');
+    const confirmBtn = document.getElementById('confirmMergerBtn');
+    
+    if (!targetSchool) {
+        aliasList.innerHTML = '<p style="color: #5f6368; font-size: 13px; font-style: italic;">Сначала выберите главную школу сверху.</p>';
+        confirmBtn.disabled = true;
+        return;
+    }
+    
+    const uniqueSchools = [...new Set(allData.map(item => item.school))].filter(Boolean).sort();
+    aliasList.innerHTML = '';
+    
+    let hasOptions = false;
+    uniqueSchools.forEach(school => {
+        if (school === targetSchool) return; 
+        hasOptions = true;
+        
+        const label = document.createElement('label');
+        label.className = 'checkbox-item';
+        label.innerHTML = `
+            <input type="checkbox" value="${school.replace(/"/g, '&quot;')}">
+            <span>${school}</span>
+        `;
+        // Разблокируем кнопку "Объединить", если выбрана хотя бы одна галочка
+        label.querySelector('input').addEventListener('change', () => {
+            const checkedBoxes = aliasList.querySelectorAll('input:checked');
+            confirmBtn.disabled = checkedBoxes.length === 0;
+            confirmBtn.textContent = checkedBoxes.length > 0 
+                ? `Объединить выбранные (${checkedBoxes.length})`
+                : 'Объединить выбранные';
+        });
+        aliasList.appendChild(label);
+    });
+    
+    if (!hasOptions) {
+        aliasList.innerHTML = '<p style="color: #5f6368; font-size: 13px; font-style: italic;">Нет других школ для объединения.</p>';
+    }
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Объединить выбранные';
+}
+
+async function executeMerge() {
+    const targetSchool = document.getElementById('targetSchoolSelect').value;
+    const checkedBoxes = document.getElementById('aliasSchoolsList').querySelectorAll('input:checked');
+    const schoolsToMerge = Array.from(checkedBoxes).map(cb => cb.value);
+    
+    if (!targetSchool || schoolsToMerge.length === 0) return;
+    
+    // 1. Обновляем данные в оперативной памяти (allData)
+    allData.forEach(item => {
+        if (schoolsToMerge.includes(item.school)) {
+            item.school = targetSchool;
+        }
+    });
+    
+    // 2. Достаем текущие алиасы из базы
+    const storageRes = await chrome.storage.local.get(['schoolAliases', 'competitionData']);
+    let aliases = storageRes.schoolAliases || {};
+    
+    // 3. Запоминаем новые алиасы
+    schoolsToMerge.forEach(oldSchool => {
+        // Ключи сохраняем в нижнем регистре для надежного матчинга при парсинге
+        const lowerKey = oldSchool.trim().toLowerCase();
+        aliases[lowerKey] = targetSchool;
+    });
+    
+    // 4. Обновляем хранилище Chrome (сохраняем очищенные данные и новые алиасы)
+    await chrome.storage.local.set({ 
+        schoolAliases: aliases,
+        competitionData: allData
+    });
+    
+    // 5. Перезапускаем фильтры и обновляем UI
+    // Убираем очищение фильтра школы, если выбранная школа слита — она уже исчезла из списков
+    applyFilters();
+    closeMergerModal();
+    showNotification(`Выбрано школ (${schoolsToMerge.length}) успешно объединены в "${targetSchool}". Правило сохранено!`);
 }
